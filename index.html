@@ -341,7 +341,6 @@
   @media print {
     .bar, .chips, .seg, .toggle, .stepper button, .settings input[type=range], #schwelleReset, .acc-tools .btn { display: none !important; }
     details.acc > .acc-body { display: block !important; }
-    #chartFig[hidden] { display: block !important; }
     body { background: #fff; }
     .card { box-shadow: none; }
   }
@@ -422,10 +421,6 @@
 
   <div class="view-head">
     <div><h3>Alle Modelle im Vergleich</h3><p class="note" id="scNote"></p></div>
-    <div class="seg" id="viewSwitch" role="group" aria-label="Darstellung">
-      <button type="button" data-view="list" aria-pressed="true">Rangliste</button>
-      <button type="button" data-view="chart" aria-pressed="false">Diagramm</button>
-    </div>
   </div>
 
   <div class="card ranking" id="ranking" role="list"></div>
@@ -435,7 +430,8 @@
     <span><i class="sw-grey"></i>unter der Mindestleistung</span>
   </div>
 
-  <figure class="card chart-card" id="chartFig" hidden>
+  <div class="view-head"><div><h3>Leistung gegen Kosten</h3><p class="note">Je weiter oben links, desto mehr Leistung fürs Geld.</p></div></div>
+  <figure class="card chart-card" id="chartFig">
     <svg id="chart" viewBox="0 0 820 400" role="img" aria-label="Leistung gegen Kosten"></svg>
     <figcaption>Leistung gegen Kosten je Unterrichtsstunde (logarithmische Achse). Die grüne Linie verbindet die Modelle, die für ihren Preis nicht zu schlagen sind: Kein anderes Modell ist zugleich besser und günstiger. Gestrichelt: Mindestleistung.</figcaption>
   </figure>
@@ -558,7 +554,7 @@ const defaults = () => ({
   perLearner: 10,
 });
 let S = defaults();
-const ui = { scenario: "tutor", benchMode: "score", sortKey: null, onlyUsed: true, view: "list", visible: new Set(MODELS.map((m) => m.id)) };
+const ui = { scenario: "tutor", benchMode: "score", sortKey: null, onlyUsed: true, visible: new Set(MODELS.map((m) => m.id)) };
 let chartArgs = null;
 
 // ---------- Hilfen ----------
@@ -717,7 +713,7 @@ function renderScenario() {
   const total = Object.values(sc.gewichte).reduce((a, b) => a + b, 0);
   $("why").innerHTML = `<b>Gewichtung für „${esc(sc.name)}“:</b> ${esc(Object.entries(sc.gewichte).map(([k, w]) => `${BENCH_NAME[k]} ${Math.round((100 * w) / total)} %`).join(", "))}. ${esc(sc.begruendung)}`;
   chartArgs = [el, thr, rec];
-  if (ui.view === "chart") renderChart(...chartArgs);
+  renderChart(...chartArgs);
 }
 
 function renderChart(rows, thr, rec) {
@@ -758,15 +754,6 @@ function renderChart(rows, thr, rec) {
     s += `<text x="${right ? cx + 12 : cx - 12}" y="${ty}" text-anchor="${right ? "start" : "end"}" style="fill:${below ? col("--ink-3") : col("--ink")};${r === rec ? "font-weight:600" : ""}">${esc(r.m.name)}</text>`;
   }
   svg.innerHTML = s;
-}
-
-function setView(view) {
-  ui.view = view;
-  document.querySelectorAll("#viewSwitch button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.view === view)));
-  $("ranking").hidden = view !== "list";
-  $("rankLegend").hidden = view !== "list";
-  $("chartFig").hidden = view !== "chart";
-  if (view === "chart" && chartArgs) renderChart(...chartArgs);
 }
 
 // ---------- 2 Modelle im Detail ----------
@@ -915,7 +902,6 @@ $("schwelle").addEventListener("input", (e) => {
   const i = document.querySelector(`[data-thr="${ui.scenario}"]`); if (i) i.value = S.schwelle[ui.scenario];
 });
 
-$("viewSwitch").addEventListener("click", (e) => { const b = e.target.closest("[data-view]"); if (b) setView(b.dataset.view); });
 $("benchMode").addEventListener("click", (e) => {
   const b = e.target.closest("[data-mode]"); if (!b) return;
   ui.benchMode = b.dataset.mode;
@@ -968,7 +954,7 @@ function applyTheme() {
   const b = $("themeBtn");
   b.setAttribute("aria-label", dark ? "Helles Design einschalten" : "Dunkles Design einschalten");
   b.title = b.getAttribute("aria-label");
-  if (ui.view === "chart" && chartArgs) renderChart(...chartArgs);
+  if (chartArgs) renderChart(...chartArgs);
 }
 $("themeBtn").addEventListener("click", () => {
   const next = document.documentElement.classList.contains("is-dark") ? "light" : "dark";
@@ -979,7 +965,7 @@ $("themeBtn").addEventListener("click", () => {
 darkQuery.addEventListener("change", applyTheme);
 applyTheme();
 let resizeTimer;
-addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => { if (ui.view === "chart" && chartArgs) renderChart(...chartArgs); }, 150); });
+addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => { if (chartArgs) renderChart(...chartArgs); }, 150); });
 if (location.hash === "#methodik") $("accMethodik").open = true;
 
 renderPurposes();
